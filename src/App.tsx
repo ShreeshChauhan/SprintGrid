@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 // ---------- types ----------
 type ColumnKey = "To Do" | "In Progress" | "In Review" | "Done";
@@ -166,7 +167,7 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks", filter: `user_id=eq.${userId}` },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Task>) => {
           if (payload.eventType === "INSERT") {
             const t = payload.new as Task;
             const col = t.status ? REVERSE_STATUS_MAP[t.status] : undefined;
