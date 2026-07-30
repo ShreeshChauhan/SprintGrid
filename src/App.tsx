@@ -32,18 +32,91 @@ const [form, setForm] = useState({
   dueDate: "",
 });
 
+const [draggedTask, setDraggedTask] = useState(null); // { id, fromColumn }
+const [dragOverColumn, setDragOverColumn] = useState(null);
+
 const openModal = (col) => {
   setActiveColumn(col);
   setForm({ title: "", description: "", priority: "Medium", dueDate: "" });
+  setError(null);
+  setIsSaving(false);
 };
-const closeModal = () => setActiveColumn(null);
-const handleCreate = () => {
-  if (!form.title.trim()) return;
-  setTasks((prev) => ({
-    ...prev,
-    [activeColumn]: [...prev[activeColumn], { ...form, id: Date.now() }],
-  }));
-  closeModal();
+const closeModal = () => {
+  setActiveColumn(null);
+  setError(null);
+  setIsSaving(false);
+};
+
+const handleCreate = async () => {
+  if (!form.title.trim()) {
+    setError("Title is required.");
+    return;
+  }
+
+  setError(null);
+  setIsSaving(true);
+
+  try {
+    // simulate network request — replace with your real API call
+    await new Promise((resolve, reject) =>
+      setTimeout(() => {
+        // simulate occasional failure for testing
+        Math.random() < 0.1 ? reject(new Error("Failed to save task.")) : resolve();
+      }, 900)
+    );
+
+    setTasks((prev) => ({
+      ...prev,
+      [activeColumn]: [...prev[activeColumn], { ...form, id: Date.now() }],
+    }));
+    closeModal();
+  } catch (err) {
+    setError(err.message || "Something went wrong. Please try again.");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+const handleDragStart = (task, fromColumn) => {
+  setDraggedTask({ id: task.id, fromColumn });
+};
+
+const handleDragOver = (e, column) => {
+  e.preventDefault(); // required to allow dropping
+  setDragOverColumn(column);
+};
+
+const handleDragLeave = () => {
+  setDragOverColumn(null);
+};
+
+const [isSaving, setIsSaving] = useState(false);
+const [error, setError] = useState(null);
+
+const handleDrop = (e, toColumn) => {
+  e.preventDefault();
+  setDragOverColumn(null);
+  if (!draggedTask || draggedTask.fromColumn === toColumn) {
+    setDraggedTask(null);
+    return;
+  }
+
+  setTasks((prev) => {
+    const movedTask = prev[draggedTask.fromColumn].find(
+      (t) => t.id === draggedTask.id
+    );
+    if (!movedTask) return prev;
+
+    return {
+      ...prev,
+      [draggedTask.fromColumn]: prev[draggedTask.fromColumn].filter(
+        (t) => t.id !== draggedTask.id
+      ),
+      [toColumn]: [...prev[toColumn], movedTask],
+    };
+  });
+
+  setDraggedTask(null);
 };
 
   useEffect(() => {
@@ -72,43 +145,48 @@ const handleCreate = () => {
         {/* ---------- kanban columns ---------- */}
         <div className="lg-columns">
           {["To Do", "In Progress", "In Review", "Done"].map((col) => (
-            <div key={col} className="lg-column">
-              <h3 className="lg-column-title">{col}</h3>
-              <div className="lg-column-body">
-                {tasks[col].length === 0 ? (
-                  <div
-                    className="lg-column-empty"
-                    onClick={() => openModal(col)}
-                  >
-                    <span className="lg-empty-plus">+</span>
-                    <span className="lg-empty-label">Add</span>
-                  </div>
-                ) : (
+            <div
+  key={col}
+  className={`lg-column ${dragOverColumn === col ? "is-drag-over" : ""}`}
+  onDragOver={(e) => handleDragOver(e, col)}
+  onDragLeave={handleDragLeave}
+  onDrop={(e) => handleDrop(e, col)}
+>
+
+              
+              
+  <div className="lg-column-body">
+    {tasks[col].length === 0 ? (
+      <div className="lg-column-empty" onClick={() => openModal(col)}>
+        <span className="lg-empty-plus">+</span>
+        <span className="lg-empty-label">Add</span>
+      </div>
+    ) : (
                   <>
                     {tasks[col].map((t) => (
-                      <div key={t.id} className="lg-task-card">
-                        <div className="lg-task-top">
-                          <span className={`lg-priority lg-priority-${t.priority.toLowerCase()}`}>
-                            {t.priority}
-                          </span>
-                          {t.dueDate && <span className="lg-task-date">{t.dueDate}</span>}
-                        </div>
-                        <div className="lg-task-title">{t.title}</div>
-                        {t.description && (
-                          <div className="lg-task-desc">{t.description}</div>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      className="lg-add-more"
-                      onClick={() => openModal(col)}
-                    >
-                      + Add task
-                    </button>
-                  </>
-                )}
-              </div>
+          <div
+            key={t.id}
+            className="lg-task-card"
+            draggable
+            onDragStart={() => handleDragStart(t, col)}
+          >
+            <div className="lg-task-top">
+              <span className={`lg-priority lg-priority-${t.priority.toLowerCase()}`}>
+                {t.priority}
+              </span>
+              {t.dueDate && <span className="lg-task-date">{t.dueDate}</span>}
             </div>
+            <div className="lg-task-title">{t.title}</div>
+            {t.description && <div className="lg-task-desc">{t.description}</div>}
+          </div>
+        ))}
+        <button className="lg-add-more" onClick={() => openModal(col)}>
+          + Add task
+        </button>
+      </>
+    )}
+  </div>
+</div>
           ))}
         </div>
         
@@ -190,18 +268,32 @@ const handleCreate = () => {
               </div>
             </div>
 
+            {error && (
+  <div className="lg-error-banner">
+    <span className="lg-error-icon">!</span>
+    {error}
+  </div>
+)}
+
             <div className="lg-modal-footer">
-              <button className="lg-btn-ghost" onClick={closeModal}>
-                Cancel
-              </button>
-              <button
-                className="lg-btn-primary"
-                onClick={handleCreate}
-                disabled={!form.title.trim()}
-              >
-                Create Task
-              </button>
-            </div>
+  <button className="lg-btn-ghost" onClick={closeModal} disabled={isSaving}>
+    Cancel
+  </button>
+  <button
+    className="lg-btn-primary"
+    onClick={handleCreate}
+    disabled={!form.title.trim() || isSaving}
+  >
+    {isSaving ? (
+      <span className="lg-btn-loading">
+        <span className="lg-spinner" />
+        Saving...
+      </span>
+    ) : (
+      "Create Task"
+    )}
+  </button>
+</div>
           </div>
         </div>
       )}
@@ -641,5 +733,22 @@ const CSS = `
     animation: none !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.lg-task-card {
+  cursor: grab;
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.2s ease;
+}
+.lg-task-card:active {
+  cursor: grabbing;
+  opacity: 0.6;
+}
+
+.lg-column {
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.lg-column.is-drag-over {
+  background: rgba(111,199,224,0.06);
+  border-color: rgba(111,199,224,0.5);
 }
 `;
