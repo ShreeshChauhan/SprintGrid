@@ -17,6 +17,34 @@ import React, { useEffect, useState } from "react";
  */
 export default function SprintGridLanding() {
   const [loaded, setLoaded] = useState(false);
+  
+  const [tasks, setTasks] = useState({
+  "To Do": [],
+  "In Progress": [],
+  "In Review": [],
+  Done: [],
+});
+const [activeColumn, setActiveColumn] = useState(null);
+const [form, setForm] = useState({
+  title: "",
+  description: "",
+  priority: "Medium",
+  dueDate: "",
+});
+
+const openModal = (col) => {
+  setActiveColumn(col);
+  setForm({ title: "", description: "", priority: "Medium", dueDate: "" });
+};
+const closeModal = () => setActiveColumn(null);
+const handleCreate = () => {
+  if (!form.title.trim()) return;
+  setTasks((prev) => ({
+    ...prev,
+    [activeColumn]: [...prev[activeColumn], { ...form, id: Date.now() }],
+  }));
+  closeModal();
+};
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 80);
@@ -42,20 +70,47 @@ export default function SprintGridLanding() {
       {/* ---------- center stage ---------- */}
       <div className="lg-stage">
         {/* ---------- kanban columns ---------- */}
-<div className="lg-columns">
-  {["To Do", "In Progress", "In Review", "Done"].map((col) => (
-    <div key={col} className="lg-column">
-      <h3 className="lg-column-title">{col}</h3>
-      <div className="lg-column-body">
-        {/* task cards go here */}
-        <div className="lg-column-empty">
-          <span className="lg-empty-plus">+</span>
-          <span className="lg-empty-label">Add</span>
+        <div className="lg-columns">
+          {["To Do", "In Progress", "In Review", "Done"].map((col) => (
+            <div key={col} className="lg-column">
+              <h3 className="lg-column-title">{col}</h3>
+              <div className="lg-column-body">
+                {tasks[col].length === 0 ? (
+                  <div
+                    className="lg-column-empty"
+                    onClick={() => openModal(col)}
+                  >
+                    <span className="lg-empty-plus">+</span>
+                    <span className="lg-empty-label">Add</span>
+                  </div>
+                ) : (
+                  <>
+                    {tasks[col].map((t) => (
+                      <div key={t.id} className="lg-task-card">
+                        <div className="lg-task-top">
+                          <span className={`lg-priority lg-priority-${t.priority.toLowerCase()}`}>
+                            {t.priority}
+                          </span>
+                          {t.dueDate && <span className="lg-task-date">{t.dueDate}</span>}
+                        </div>
+                        <div className="lg-task-title">{t.title}</div>
+                        {t.description && (
+                          <div className="lg-task-desc">{t.description}</div>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      className="lg-add-more"
+                      onClick={() => openModal(col)}
+                    >
+                      + Add task
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
-  ))}
-</div>
         
 
         
@@ -65,10 +120,97 @@ export default function SprintGridLanding() {
         </div>
       </div>
 
-      
+      {/* ---------- create task modal ---------- */}
+      {activeColumn && (
+        <div className="lg-modal-overlay" onClick={closeModal}>
+          <div className="lg-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="lg-modal-header">
+              <span className="lg-modal-eyebrow">{activeColumn}</span>
+              <h2 className="lg-modal-title">New Task</h2>
+              <button className="lg-modal-close" onClick={closeModal}>
+                ×
+              </button>
+            </div>
+
+            <div className="lg-modal-body">
+              <label className="lg-field">
+                <span className="lg-field-label">Title</span>
+                <input
+                  autoFocus
+                  className="lg-input"
+                  placeholder="e.g. Design onboarding flow"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                />
+              </label>
+
+              <label className="lg-field">
+                <span className="lg-field-label">Description (optional)</span>
+                <textarea
+                  className="lg-textarea"
+                  placeholder="Add more context..."
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
+                />
+              </label>
+
+              <div className="lg-field-row">
+                <label className="lg-field">
+                  <span className="lg-field-label">Priority</span>
+                  <div className="lg-priority-select">
+                    {["Low", "Medium", "High"].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`lg-priority-chip lg-priority-chip-${p.toLowerCase()} ${
+                          form.priority === p ? "is-active" : ""
+                        }`}
+                        onClick={() => setForm({ ...form, priority: p })}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </label>
+
+                <label className="lg-field">
+                  <span className="lg-field-label">Due date (optional)</span>
+                  <input
+                    type="date"
+                    className="lg-input"
+                    value={form.dueDate}
+                    onChange={(e) =>
+                      setForm({ ...form, dueDate: e.target.value })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="lg-modal-footer">
+              <button className="lg-btn-ghost" onClick={closeModal}>
+                Cancel
+              </button>
+              <button
+                className="lg-btn-primary"
+                onClick={handleCreate}
+                disabled={!form.title.trim()}
+              >
+                Create Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+      
+
 
 
 
@@ -88,7 +230,6 @@ const CSS = `
 
 .lg-root * { box-sizing: border-box; }
 
-/* ---------- ambient background ---------- */
 .lg-beams {
   position: absolute;
   inset: -10% -10%;
@@ -127,88 +268,15 @@ const CSS = `
   background: radial-gradient(ellipse at 50% 35%, transparent 35%, rgba(0,0,0,0.7) 100%);
 }
 
-/* ---------- headline ---------- */
-.lg-headline {
-  position: relative;
-  z-index: 3;
-  max-width: 640px;
-  opacity: 0;
-  transform: translateY(-8px);
-  transition: opacity 0.9s ease, transform 0.9s ease;
-}
-.lg-root.is-in .lg-headline { opacity: 1; transform: translateY(0); }
-
-.lg-headline h1 {
-  margin: 0;
-  font-weight: 500;
-  font-size: clamp(24px, 3vw, 34px);
-  line-height: 1.25;
-  color: #f3f1ed;
-}
-
-/* ---------- top-right CTA ---------- */
-.lg-cta {
-  position: absolute;
-  top: 40px;
-  right: 48px;
-  z-index: 3;
-  max-width: 260px;
-  text-align: right;
-  font-family: 'JetBrains Mono', monospace;
-  opacity: 0;
-  transform: translateY(-8px);
-  transition: opacity 0.9s ease, transform 0.9s ease;
-  transition-delay: 0.15s;
-}
-.lg-root.is-in .lg-cta { opacity: 1; transform: translateY(0); }
-
-.lg-cta-copy {
-  margin: 0 0 12px;
-  font-size: 11.5px;
-  line-height: 1.6;
-  color: #cfcdc8;
-}
-.lg-cta-copy em { color: #f4f2ee; font-style: italic; }
-
-.lg-cta-sub {
-  margin: 8px 0 0;
-  font-size: 11px;
-  color: #8b8a86;
-}
-.lg-cta-sub a {
-  color: #6fc7e0;
-  text-decoration: none;
-}
-.lg-cta-sub a:hover { text-decoration: underline; }
-
-.lg-download {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
-  color: #f4f2ee;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  transition: background 0.25s ease, transform 0.25s ease;
-}
-.lg-download:hover { background: rgba(255,255,255,0.14); transform: translateY(-1px); }
-.lg-apple { flex-shrink: 0; }
-
-/* ---------- center stage ---------- */
 .lg-stage {
   position: relative;
   z-index: 2;
-  margin-top: 9vh;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/* ---------- columns ---------- */
 .lg-columns {
   position: relative;
   z-index: 3;
@@ -233,6 +301,8 @@ const CSS = `
   padding: 14px;
   min-height: 220px;
   backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
 }
 
 .lg-column-title {
@@ -249,6 +319,7 @@ const CSS = `
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
 }
 
 .lg-column-empty {
@@ -260,7 +331,10 @@ const CSS = `
   gap: 8px;
   min-height: 140px;
   cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s ease;
 }
+.lg-column-empty:hover { background: rgba(255,255,255,0.03); }
 
 .lg-empty-plus {
   font-family: 'JetBrains Mono', monospace;
@@ -277,172 +351,70 @@ const CSS = `
   text-transform: capitalize;
 }
 
-.lg-badge {
-  position: relative;
-  z-index: 4;
+/* ---------- task cards ---------- */
+.lg-task-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.lg-task-top {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 2px;
-  width: 128px;
-  padding: 12px 10px 14px;
-  background: #131313;
-  border: 1px solid rgba(255,255,255,0.12);
-  clip-path: polygon(
-    4% 0%, 12% 4%, 20% 0%, 28% 4%, 36% 0%, 44% 4%, 52% 0%, 60% 4%, 68% 0%, 76% 4%, 84% 0%, 92% 4%, 100% 0%,
-    100% 100%, 92% 96%, 84% 100%, 76% 96%, 68% 100%, 60% 96%, 52% 100%, 44% 96%, 36% 100%, 28% 96%, 20% 100%, 12% 96%, 4% 100%,
-    0% 100%, 0% 0%
-  );
-  transform: rotate(-6deg);
-  opacity: 0;
-  animation: lg-badge-wobble 6s ease-in-out infinite;
-  animation-play-state: paused;
-  transition: opacity 0.8s ease;
-  transition-delay: 0.45s;
-  margin-bottom: -18px;
 }
-.lg-root.is-in .lg-badge { opacity: 1; animation-play-state: running; }
-@keyframes lg-badge-wobble {
-  0%, 100% { transform: rotate(-6deg); }
-  50% { transform: rotate(-3deg); }
-}
-.lg-badge-eyebrow {
+
+.lg-priority {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.14em;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #a9a8a4;
+  padding: 2px 7px;
+  border-radius: 20px;
 }
-.lg-badge-name {
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-weight: 600;
-  font-size: 19px;
-  color: #f4f2ee;
-}
+.lg-priority-low { background: rgba(111,199,224,0.15); color: #6fc7e0; }
+.lg-priority-medium { background: rgba(230,180,90,0.15); color: #e6b45a; }
+.lg-priority-high { background: rgba(224,111,111,0.15); color: #e06f6f; }
 
-/* ---------- device card ---------- */
-.lg-device {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  background: linear-gradient(180deg, #eeece7, #d8d6d0);
-  border-radius: 22px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.6);
-  opacity: 0;
-  transform: translateY(16px) scale(0.97);
-  transition: opacity 1s cubic-bezier(0.16,1,0.3,1), transform 1s cubic-bezier(0.16,1,0.3,1);
-  transition-delay: 0.6s;
-}
-.lg-root.is-in .lg-device { opacity: 1; transform: translateY(0) scale(1); }
-
-.lg-device-left {
-  width: 140px;
-  height: 176px;
-  border-radius: 14px;
-  background: #cfcdc6;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  align-content: center;
-  justify-items: center;
-  gap: 9px;
-  padding: 16px;
-}
-.lg-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #9a988f;
-  transition: background 0.4s ease;
-}
-.lg-dot.is-lit { background: #4a4943; animation: lg-dot-pulse 3.2s ease-in-out infinite; }
-@keyframes lg-dot-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
-.lg-device-right {
-  width: 200px;
-  height: 176px;
-  border-radius: 14px;
-  background: #101012;
-  padding: 14px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.lg-device-count {
-  position: absolute;
-  top: 10px;
-  right: 12px;
+.lg-task-date {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  color: #6fc7e0;
+  color: #8b8a86;
 }
 
-.lg-tasklist {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 1;
+.lg-task-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  color: #f4f2ee;
+  font-weight: 500;
 }
-.lg-tasklist li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.lg-check {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  border: 1.4px solid #55544f;
-  flex-shrink: 0;
-  position: relative;
-}
-.lg-tasklist li.is-done .lg-check {
-  background: #6fc7e0;
-  border-color: #6fc7e0;
-}
-.lg-tasklist li.is-done .lg-check::after {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 0.5px;
-  width: 3px;
-  height: 6px;
-  border-right: 1.5px solid #101012;
-  border-bottom: 1.5px solid #101012;
-  transform: rotate(40deg);
-}
-.lg-tasklist li.lg-active .lg-check {
-  animation: lg-check-fill 3.2s ease-in-out infinite;
-}
-@keyframes lg-check-fill {
-  0%, 55% { background: transparent; border-color: #55544f; }
-  70%, 100% { background: #6fc7e0; border-color: #6fc7e0; }
-}
-.lg-line {
-  height: 6px;
-  border-radius: 3px;
-  background: #2a2a2c;
-}
-.lg-tasklist li.is-done .lg-line { background: #26282a; position: relative; opacity: 0.6; }
-.lg-line.long { width: 130px; }
-.lg-line.mid { width: 96px; }
-.lg-line.short { width: 70px; }
 
-.lg-download-small {
-  align-self: flex-start;
+.lg-task-desc {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #a9a8a4;
+  line-height: 1.4;
+}
+
+.lg-add-more {
   margin-top: auto;
-  padding: 6px 10px;
-  font-size: 10px;
-  border-radius: 6px;
+  background: none;
+  border: 1px dashed rgba(255,255,255,0.15);
+  color: #cfcdc8;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.lg-add-more:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.3);
 }
 
 /* ---------- watermark ---------- */
@@ -468,14 +440,200 @@ const CSS = `
 }
 .lg-root.is-in .lg-watermark { opacity: 0.9; transform: translateY(0); }
 
+/* ---------- create task modal ---------- */
+.lg-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(6,6,7,0.72);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lg-fade-in 0.25s ease;
+}
+@keyframes lg-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lg-modal {
+  width: 420px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: linear-gradient(165deg, #16161a 0%, #0e0e10 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  padding: 24px;
+  animation: lg-pop-in 0.3s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+}
+@keyframes lg-pop-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.lg-modal-header {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.lg-modal-eyebrow {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6fc7e0;
+  background: rgba(111,199,224,0.12);
+  padding: 3px 9px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+.lg-modal-title {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 24px;
+  color: #f4f2ee;
+}
+
+.lg-modal-close {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #cfcdc8;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.lg-modal-close:hover { background: rgba(255,255,255,0.15); }
+
+.lg-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.lg-field-row {
+  display: flex;
+  gap: 14px;
+}
+
+.lg-field-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8b8a86;
+}
+
+.lg-input, .lg-textarea {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 9px;
+  padding: 9px 11px;
+  color: #f4f2ee;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  resize: none;
+}
+.lg-input:focus, .lg-textarea:focus {
+  border-color: #6fc7e0;
+  background: rgba(255,255,255,0.07);
+}
+.lg-input::placeholder, .lg-textarea::placeholder { color: #6b6a66; }
+
+.lg-input[type="date"] {
+  color-scheme: dark;
+}
+
+.lg-priority-select {
+  display: flex;
+  gap: 6px;
+}
+
+.lg-priority-chip {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  color: #cfcdc8;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.lg-priority-chip-low.is-active { background: rgba(111,199,224,0.18); border-color: #6fc7e0; color: #6fc7e0; }
+.lg-priority-chip-medium.is-active { background: rgba(230,180,90,0.18); border-color: #e6b45a; color: #e6b45a; }
+.lg-priority-chip-high.is-active { background: rgba(224,111,111,0.18); border-color: #e06f6f; color: #e06f6f; }
+
+.lg-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.lg-btn-ghost {
+  padding: 9px 16px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #cfcdc8;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.lg-btn-ghost:hover { background: rgba(255,255,255,0.06); }
+
+.lg-btn-primary {
+  padding: 9px 18px;
+  border-radius: 9px;
+  border: none;
+  background: linear-gradient(135deg, #6fc7e0, #4a9cb8);
+  color: #0c0c0d;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lg-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(111,199,224,0.35); }
+.lg-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 860px) {
   .lg-root { padding: 28px 20px; }
-  .lg-cta { position: static; max-width: 100%; text-align: left; margin-top: 20px; }
-  .lg-headline h1 { font-size: 22px; }
-  .lg-device { flex-direction: column; align-items: center; }
-  .lg-device-left, .lg-device-right { width: 220px; }
+  .lg-columns { flex-direction: column; }
   .lg-watermark { font-size: clamp(60px, 22vw, 140px); }
+  .lg-field-row { flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {
